@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base target="_top">
+  <!-- Menggunakan CSS standar Google Workspace Add-on -->
+  <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons1.css">
+  <style>
+    body {
+      padding: 10px;
+    }
+
+    .block {
+      margin-bottom: 15px;
+    }
+
+    #status {
+      color: gray;
+      font-style: italic;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .doc-list {
+      list-style-type: none;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+    }
+
+    .doc-item {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+    }
+
+    .doc-item:hover {
+      background-color: #f1f3f4;
+    }
+
+    .doc-item.selected {
+      background-color: #e8f0fe;
+      border-left: 3px solid #1a73e8;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="block">
+    <b>Buat Soal Otomatis</b>
+    <p>Pilih file Google Doc yang berisi soal (Format A. B. C. D.)</p>
+  </div>
+
+  <!-- UI Menggunakan DriveApp List -->
+  <div class="block" id="drive-picker-container">
+    <button class="action" onclick="fetchRecentDocs()" id="btn-fetch" style="width: 100%">Cari File di Drive</button>
+
+    <div id="file-list-container" class="hidden" style="margin-top:10px;">
+      <label>File Google Doc Terakhir:</label>
+      <ul id="doc-list" class="doc-list"></ul>
+    </div>
+  </div>
+
+  <div class="block hidden" id="generate-container">
+    <button class="create" onclick="generateForm()" id="btn-generate" style="width: 100%">Mulai Membuat Soal</button>
+  </div>
+
+  <div id="status"></div>
+
+  <script>
+    var selectedFileId = null;
+
+    function updateStatus(msg, isError) {
+      var statusEl = document.getElementById('status');
+      statusEl.innerHTML = msg;
+      statusEl.style.color = isError ? 'red' : 'gray';
+    }
+
+    function fetchRecentDocs() {
+      updateStatus("Mencari file di Drive...");
+      document.getElementById('btn-fetch').disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (docs) {
+          document.getElementById('btn-fetch').disabled = false;
+          if (docs.length === 0) {
+            updateStatus("Tidak ada file Google Doc ditemukan.");
+            return;
+          }
+          renderFileList(docs);
+          updateStatus("Silakan pilih salah satu file di atas.");
+        })
+        .withFailureHandler(function (error) {
+          document.getElementById('btn-fetch').disabled = false;
+          updateStatus("Error: " + error.message, true);
+        })
+        .getRecentDocs();
+    }
+
+    function renderFileList(docs) {
+      var container = document.getElementById('file-list-container');
+      var listUl = document.getElementById('doc-list');
+      listUl.innerHTML = '';
+
+      container.classList.remove('hidden');
+
+      docs.forEach(function (doc) {
+        var li = document.createElement('li');
+        li.className = 'doc-item';
+        li.textContent = doc.name;
+        li.onclick = function () {
+          // Hapus seleksi sebelumnya
+          var items = document.querySelectorAll('.doc-item');
+          items.forEach(i => i.classList.remove('selected'));
+
+          // Tambahkan seleksi ke item yang di klik
+          li.classList.add('selected');
+          selectedFileId = doc.id;
+
+          // Tampilkan tombol generate
+          document.getElementById('generate-container').classList.remove('hidden');
+        };
+        listUl.appendChild(li);
+      });
+    }
+
+    function generateForm() {
+      if (!selectedFileId) return;
+
+      updateStatus("Memproses dokumen dan membuat soal...");
+      document.getElementById('btn-generate').disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function (result) {
+          document.getElementById('btn-generate').disabled = false;
+          if (result.success) {
+            updateStatus("<span style='color:green'>" + result.message + "</span>");
+          } else {
+            updateStatus(result.message, true);
+          }
+        })
+        .withFailureHandler(function (error) {
+          document.getElementById('btn-generate').disabled = false;
+          updateStatus("Gagal: " + error.message, true);
+        })
+        .generateQuizFromDoc(selectedFileId);
+    }
+  </script>
+</body>
+
+</html>

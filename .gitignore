@@ -1,0 +1,25 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PowerShell scripts (Alat bantu kompres foto, dll)
+*.ps1
+
+# Images (Screenshot dan file gambar mentah di root)
+*.png
+*.PNG
+*.jpg
+*.jpeg
+
+# PowerShell logs/temp
+*.log
+*.tmp
+
+# Apps Script local state
+.clasp.json
+node_modules/
+
+# Keep the docs folder clean
+# (Jika nanti Anda menaruh gambar di dalam folder docs, 
+# kita bisa buat pengecualian, tapi untuk sekarang kita abaikan semua gambar di root)
