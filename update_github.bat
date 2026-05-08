@@ -5,7 +5,7 @@ cd /d "%~dp0"
 :: Konfigurasi URL Repository
 set REPO_URL=https://github.com/iyrdrms-create/misalazhar-builder.git
 
-:: Cek apakah folder .git sudah ada
+:: Inisialisasi jika belum
 if not exist ".git" (
     echo [INFO] Inisialisasi Git...
     git init
@@ -13,13 +13,12 @@ if not exist ".git" (
     git branch -M main
 )
 
-:: Cek apakah remote sudah benar
-git remote set-url origin %REPO_URL%
-
-echo [INFO] Menyegarkan daftar file (refresh index)...
+:: Reset paksa agar mengikuti .gitignore yang baru
+echo [INFO] Membersihkan daftar file lama...
+git reset --mixed HEAD > nul 2>&1
 git rm -r --cached . > nul 2>&1
 
-echo [INFO] Menambahkan file...
+echo [INFO] Menambahkan file (Sesuai .gitignore)...
 git add .
 
 :: Input pesan commit dari user
@@ -30,10 +29,11 @@ echo [INFO] Melakukan commit...
 git commit -m "%commit_msg%"
 
 echo [INFO] Mengirim ke GitHub (Push)...
-git push -u origin main
+git push -u origin main -f
 
 echo.
 echo ==========================================
-echo [BERHASIL] Selesai! Tekan apa saja untuk keluar.
+echo [INFO] Jika muncul error 403, pastikan Anda sudah 
+echo menghapus login GitHub lama di Credential Manager Windows.
 echo ==========================================
-pause > nul
+pause
