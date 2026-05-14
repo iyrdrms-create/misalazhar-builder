@@ -34,10 +34,26 @@ function getRecentDocs() {
 
 function generateQuizFromDoc(fileId) {
   try {
-    var doc = DocumentApp.openById(fileId);
-    var body = doc.getBody();
-
-    var questions = parseQuestions(body);
+    // Menggunakan Advanced Docs Service (Google Docs API)
+    // Ini menghormati izin .readonly dan tidak butuh izin Akses Penuh
+    var doc = Docs.Documents.get(fileId);
+    var content = doc.body.content;
+    var textContent = "";
+    
+    // Menggabungkan teks dari struktur data Docs API
+    for (var i = 0; i < content.length; i++) {
+      if (content[i].paragraph) {
+        var elements = content[i].paragraph.elements;
+        for (var j = 0; j < elements.length; j++) {
+          if (elements[j].textRun) {
+            textContent += elements[j].textRun.content;
+          }
+        }
+      }
+    }
+    
+    var lines = textContent.split(/\r?\n/);
+    var questions = parseQuestionsFromText(lines);
 
     if (questions.length === 0) {
       return { success: false, message: "Tidak ada soal dengan format yang sesuai ditemukan di dokumen ini." };
@@ -59,28 +75,24 @@ function generateQuizFromDoc(fileId) {
   }
 }
 
-function parseQuestions(body) {
-  var paragraphs = body.getParagraphs();
+function parseQuestionsFromText(lines) {
   var questions = [];
-
   var currentQuestionText = [];
   var currentOptions = [];
 
-  for (var i = 0; i < paragraphs.length; i++) {
-    var p = paragraphs[i];
-    var text = p.getText().trim();
+  for (var i = 0; i < lines.length; i++) {
+    var text = lines[i].trim();
     if (text === '') continue;
 
-    var isListItem = (p.getType() === DocumentApp.ElementType.LIST_ITEM);
+    // Deteksi Pilihan Ganda (A. B. C. D. E.)
     var optionMatch = text.match(/^\s*([A-Ea-e])[\.\)]\s*(.+)/);
 
     if (optionMatch) {
       currentOptions.push(optionMatch[2].trim());
     }
-    else if (isListItem && currentQuestionText.length > 0) {
-      currentOptions.push(text);
-    }
     else {
+      // Jika baris ini bukan pilihan, tapi kita sudah punya pilihan dari soal sebelumnya
+      // Maka simpan soal sebelumnya dulu
       if (currentOptions.length > 0) {
         questions.push({
           text: currentQuestionText.join("\n").trim(),
@@ -90,15 +102,18 @@ function parseQuestions(body) {
         currentOptions = [];
       }
 
+      // Cek apakah baris ini adalah awal soal baru (dimulai angka)
       var qMatch = text.match(/^\d+[\.\)]\s*(.+)/);
       if (qMatch) {
         currentQuestionText.push(qMatch[1].trim());
       } else {
+        // Jika tidak ada angka, anggap ini sambungan teks soal
         currentQuestionText.push(text);
       }
     }
   }
 
+  // Simpan soal terakhir
   if (currentQuestionText.length > 0 && currentOptions.length >= 2) {
     questions.push({
       text: currentQuestionText.join("\n").trim(),
